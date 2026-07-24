@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <!-- Esta línea hace que el juego se vea bien en el celular -->
@@ -8,7 +8,7 @@
 <!-- Para poder "instalarlo" en el celular -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Toca Rápido 🎯</title>
+<title>Tap Fast 🎯</title>
 <style>
   /* ============================================================
      COLORES Y ESTILOS DEL JUEGO
@@ -39,14 +39,15 @@
 
   #app { position: fixed; inset: 0; }
 
-  /* ---------- HUD (marcador de puntos y tiempo) ---------- */
+  /* ---------- HUD (marcador de puntos, nivel y tiempo) ---------- */
   #hud {
     position: fixed; top: 0; left: 0; right: 0;
     display: none;
     justify-content: space-between;
     align-items: center;
-    padding: 14px 20px;
-    font-size: clamp(18px, 5vw, 26px);
+    gap: 6px;
+    padding: 10px 12px;
+    font-size: clamp(14px, 4vw, 22px);
     font-weight: 800;
     z-index: 50;
     pointer-events: none;
@@ -54,21 +55,26 @@
   }
   #hud .box {
     background: rgba(0,0,0,.35);
-    padding: 8px 16px;
-    border-radius: 16px;
+    padding: 7px 12px;
+    border-radius: 14px;
     backdrop-filter: blur(6px);
+    white-space: nowrap;
   }
   #tiempo.poco { color: var(--rojo); }
-  /* El botón de pausa sí debe recibir el toque (el resto del HUD no) */
-  .btnHud {
+  /* Botón de PAUSA: más grande para que se toque fácil */
+  #btnPausa {
     pointer-events: auto;
     font-family: inherit;
     font-weight: 800;
     color: var(--texto);
     border: none;
     cursor: pointer;
+    font-size: clamp(22px, 6vw, 30px);
+    padding: 8px 20px;
+    border-radius: 16px;
+    background: rgba(0,0,0,.45);
   }
-  .btnHud:active { transform: scale(0.9); }
+  #btnPausa:active { transform: scale(0.9); }
 
   /* ---------- Área de juego ---------- */
   #zona { position: fixed; inset: 0; display: none; }
@@ -91,7 +97,8 @@
 
   .verde  { background: radial-gradient(circle at 35% 30%, #86efac, var(--verde)); }
   .dorado { background: radial-gradient(circle at 35% 30%, #fde68a, var(--dorado)); box-shadow: 0 8px 30px rgba(251,191,36,.7), inset 0 -6px 12px rgba(0,0,0,.2); }
-  .rojo   { background: radial-gradient(circle at 35% 30%, #fca5a5, var(--rojo)); }
+  /* El círculo rojo ahora es un TNT: fondo rojo con brillo peligroso */
+  .rojo   { background: radial-gradient(circle at 35% 30%, #fca5a5, var(--rojo)); box-shadow: 0 8px 26px rgba(239,68,68,.7), inset 0 -6px 12px rgba(0,0,0,.25); }
 
   /* Texto flotante de puntos (+10, +30, -5) */
   .flotante {
@@ -105,34 +112,51 @@
   }
   @keyframes subir { to { transform: translateY(-50px); opacity: 0; } }
 
-  /* ---------- Pantallas de inicio, pausa y fin ---------- */
+  /* Cartel de COMBO y de SUBIR DE NIVEL (aparecen un momento en el centro) */
+  #combo, #nivelUp {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    font-weight: 900;
+    pointer-events: none;
+    z-index: 60;
+    text-align: center;
+    text-shadow: 0 3px 12px rgba(0,0,0,.7);
+  }
+  #combo  { top: 22%; font-size: clamp(26px, 8vw, 44px); color: var(--dorado); }
+  #nivelUp{ top: 40%; font-size: clamp(30px, 10vw, 56px); color: #fff; }
+  .pop { animation: pop .8s ease-out forwards; }
+  @keyframes pop { 0%{transform:translateX(-50%) scale(.4); opacity:0;} 25%{transform:translateX(-50%) scale(1.1); opacity:1;} 75%{opacity:1;} 100%{transform:translateX(-50%) scale(1); opacity:0;} }
+
+  /* ---------- Pantallas ---------- */
   .pantalla {
     position: fixed; inset: 0;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     text-align: center;
-    padding: 24px;
-    gap: 18px;
+    padding: 20px;
+    gap: 14px;
     z-index: 100;
+    overflow-y: auto;
   }
-  #pantallaFin, #pantallaPausa { display: none; }
+  #pantallaFin, #pantallaPausa, #pantallaCampeones { display: none; }
 
   h1 {
-    font-size: clamp(34px, 10vw, 60px);
+    font-size: clamp(30px, 9vw, 56px);
     line-height: 1.05;
     text-shadow: 0 4px 20px rgba(0,0,0,.5);
   }
   .instrucciones {
     background: rgba(0,0,0,.3);
     border-radius: 20px;
-    padding: 18px 22px;
-    font-size: clamp(15px, 4.5vw, 19px);
-    line-height: 1.7;
+    padding: 16px 20px;
+    font-size: clamp(14px, 4.3vw, 18px);
+    line-height: 1.6;
     max-width: 420px;
   }
   .instrucciones span { font-weight: 800; }
 
-  /* ---------- Selector de idioma ---------- */
+  /* Selector de idioma */
   #idiomas { display: flex; gap: 10px; }
   .flag {
     font-size: 30px;
@@ -142,51 +166,116 @@
     padding: 6px 12px;
     cursor: pointer;
     transition: transform .1s ease, border-color .1s ease;
+    line-height: 0;
   }
   .flag.activo { border-color: var(--dorado); background: rgba(251,191,36,.18); }
   .flag:active { transform: scale(0.9); }
 
+  /* Caja para escribir el nombre del jugador */
+  #inputNombre {
+    width: min(320px, 80vw);
+    text-align: center;
+    font-size: clamp(16px, 5vw, 20px);
+    font-weight: 700;
+    color: var(--texto);
+    background: rgba(255,255,255,.1);
+    border: 2px solid rgba(255,255,255,.25);
+    border-radius: 14px;
+    padding: 12px 16px;
+    outline: none;
+  }
+  #inputNombre::placeholder { color: rgba(248,250,252,.55); font-weight: 500; }
+
   .boton {
-    margin-top: 8px;
-    font-size: clamp(20px, 6vw, 26px);
+    margin-top: 4px;
+    font-size: clamp(19px, 5.5vw, 25px);
     font-weight: 900;
     color: #0f172a;
     background: linear-gradient(135deg, #fde68a, var(--dorado));
     border: none;
     border-radius: 999px;
-    padding: 18px 44px;
+    padding: 15px 40px;
     cursor: pointer;
     box-shadow: 0 10px 30px rgba(251,191,36,.5);
     transition: transform .1s ease;
   }
   .boton:active { transform: scale(0.92); }
+  /* Botón secundario (Atrás / Ver campeones) */
+  .boton.sec {
+    color: var(--texto);
+    background: rgba(255,255,255,.12);
+    box-shadow: none;
+    border: 1px solid rgba(255,255,255,.25);
+    font-size: clamp(16px, 4.6vw, 20px);
+    padding: 12px 30px;
+  }
+  .boton.peligro {
+    color: #fff;
+    background: linear-gradient(135deg,#fca5a5,var(--rojo));
+    box-shadow: 0 10px 30px rgba(239,68,68,.5);
+  }
 
-  #puntajeFinal { font-size: clamp(56px, 18vw, 96px); font-weight: 900; color: var(--dorado); text-shadow: 0 4px 24px rgba(251,191,36,.5); }
-  #mensajeFinal { font-size: clamp(22px, 6vw, 30px); font-weight: 800; }
-  .sub { opacity: .8; font-size: clamp(14px, 4vw, 17px); }
+  .record {
+    background: rgba(251,191,36,.15);
+    border: 1px solid rgba(251,191,36,.5);
+    border-radius: 14px;
+    padding: 8px 18px;
+    font-weight: 800;
+    font-size: clamp(14px, 4vw, 18px);
+  }
+
+  #medalla { font-size: clamp(56px, 18vw, 100px); line-height: 1; }
+  #puntajeFinal { font-size: clamp(44px, 15vw, 80px); font-weight: 900; color: var(--dorado); text-shadow: 0 4px 24px rgba(251,191,36,.5); }
+  #mensajeFinal { font-size: clamp(19px, 5.2vw, 26px); font-weight: 800; }
+  #nuevoRecord { color: var(--dorado); font-weight: 900; font-size: clamp(17px, 4.8vw, 23px); display: none; }
+  .sub { opacity: .8; font-size: clamp(13px, 3.8vw, 16px); }
+
+  /* Tabla de campeones */
+  .tabla {
+    width: min(380px, 88vw);
+    background: rgba(0,0,0,.3);
+    border-radius: 18px;
+    padding: 10px 8px;
+    max-height: 46vh;
+    overflow-y: auto;
+  }
+  .fila {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px;
+    border-radius: 12px;
+    font-size: clamp(15px, 4.4vw, 19px);
+    font-weight: 700;
+  }
+  .fila:nth-child(odd) { background: rgba(255,255,255,.05); }
+  .fila.yo { background: rgba(251,191,36,.22); border: 1px solid rgba(251,191,36,.6); }
+  .fila .pos { width: 34px; text-align: center; }
+  .fila .nom { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fila .pts { color: var(--dorado); font-weight: 900; }
+  .vacio { opacity: .7; padding: 16px; font-size: clamp(14px,4vw,17px); }
 </style>
 </head>
 <body>
 <div id="app">
 
-  <!-- MARCADOR (puntos y tiempo) -->
+  <!-- MARCADOR (puntos, nivel y tiempo) -->
   <div id="hud">
     <div class="box">⭐ <span id="puntaje">0</span></div>
-    <!-- Botón para pausar / salir durante la partida -->
-    <button id="btnPausa" class="box btnHud">⏸️</button>
+    <button id="btnPausa">⏸️</button>
+    <div class="box">🎯 <span id="lblNivel">Nv</span> <span id="nivel">1</span></div>
     <div class="box">⏱️ <span id="tiempo">30</span>s</div>
   </div>
 
-  <!-- ÁREA DE JUEGO donde aparecen los círculos -->
+  <div id="combo"></div>
+  <div id="nivelUp"></div>
+
+  <!-- ÁREA DE JUEGO -->
   <div id="zona"></div>
 
   <!-- PANTALLA DE INICIO -->
   <div id="pantallaInicio" class="pantalla">
-    <!-- Selector de idioma: Español, Inglés, Francés -->
     <div id="idiomas">
       <button class="flag" data-idioma="en">🇬🇧</button>
       <button class="flag" data-idioma="es">🇪🇸</button>
-      <!-- Bandera de Quebec (Fleurdelisé) dibujada como gráfico, porque no existe como emoji -->
       <button class="flag" data-idioma="fr" title="Français (Québec)">
         <svg width="30" height="22" viewBox="0 0 40 30" aria-label="Quebec">
           <rect width="40" height="30" fill="#0d3b9e"/>
@@ -199,26 +288,40 @@
         </svg>
       </button>
     </div>
-    <h1 id="titulo">Toca Rápido 🎯</h1>
+    <h1 id="titulo">Tap Fast 🎯</h1>
     <div class="instrucciones" id="instrucciones"></div>
-    <button class="boton" id="btnJugar">▶ JUGAR</button>
-    <div class="sub" id="firma">Hecho en familia 👨‍👦‍👦</div>
+    <input id="inputNombre" type="text" maxlength="14" placeholder="Your name">
+    <div class="record"><span id="lblRecordInicio">Best</span>: <span id="recordInicio">0</span> 🏆</div>
+    <button class="boton" id="btnJugar">▶ PLAY</button>
+    <button class="boton sec" id="btnVerCampeones">🏆 Leaderboard</button>
+    <div class="sub" id="firma">Made as a family 👨‍👦‍👦</div>
   </div>
 
   <!-- PANTALLA DE PAUSA -->
   <div id="pantallaPausa" class="pantalla" style="background:rgba(15,23,42,.75); backdrop-filter:blur(6px);">
-    <h1 id="tituloPausa">⏸️ En pausa</h1>
-    <div class="sub"><span id="lblPuntajePausa">Puntaje</span>: <span id="puntajePausa">0</span></div>
-    <button class="boton" id="btnContinuar">▶ CONTINUAR</button>
-    <button class="boton" id="btnSalir" style="background:linear-gradient(135deg,#fca5a5,var(--rojo)); color:#fff; box-shadow:0 10px 30px rgba(239,68,68,.5);">⬅ SALIR</button>
+    <h1 id="tituloPausa">⏸️ Paused</h1>
+    <div class="sub"><span id="lblPuntajePausa">Score</span>: <span id="puntajePausa">0</span></div>
+    <button class="boton" id="btnContinuar">▶ CONTINUE</button>
+    <button class="boton sec" id="btnAtrasPausa">⬅ MENU</button>
+  </div>
+
+  <!-- PANTALLA DE CAMPEONES (tabla de puntajes) -->
+  <div id="pantallaCampeones" class="pantalla">
+    <h1 id="tituloCampeones">🏆 Leaderboard</h1>
+    <div class="tabla" id="tablaCampeones"></div>
+    <button class="boton sec" id="btnAtrasCampeones">⬅ BACK</button>
   </div>
 
   <!-- PANTALLA DE FIN -->
   <div id="pantallaFin" class="pantalla">
-    <div class="sub" id="lblTuPuntaje">Tu puntaje</div>
+    <div id="medalla">🏆</div>
+    <div class="sub" id="lblTuPuntaje">Your score</div>
     <div id="puntajeFinal">0</div>
     <div id="mensajeFinal"></div>
-    <button class="boton" id="btnReiniciar">🔄 JUGAR DE NUEVO</button>
+    <div id="nuevoRecord">🎉 NEW RECORD! 🎉</div>
+    <div class="tabla" id="tablaCampeonesFin"></div>
+    <button class="boton" id="btnReiniciar">🔄 PLAY AGAIN</button>
+    <button class="boton sec" id="btnMenuFin">⬅ MENU</button>
   </div>
 
 </div>
@@ -237,57 +340,64 @@ const CONFIG = {
   // "es" = español · "en" = inglés · "fr" = francés (Quebec)
   idiomaInicial: "en",
 
-  // ---- COLORES ----  (usen códigos de color, por ejemplo "#22c55e")
-  colorVerde:  "#22c55e",   // color del círculo bueno
-  colorDorado: "#fbbf24",   // color del círculo especial (vale más)
-  colorRojo:   "#ef4444",   // color del círculo malo (resta puntos)
+  // ---- COLORES ----
+  colorVerde:  "#22c55e",
+  colorDorado: "#fbbf24",
+  colorRojo:   "#ef4444",
 
-  // ---- EMOJIS de cada círculo ----  (pongan el emoji que quieran)
+  // ---- EMOJIS de cada círculo ----
   emojiVerde:  "✅",
   emojiDorado: "⭐",
-  emojiRojo:   "❌",
+  emojiRojo:   "🧨",   // ¡TNT rojo! (antes era ❌)
 
   // ---- TIEMPO de la partida (en segundos) ----
   duracionSegundos: 30,
 
   // ---- PUNTOS que da cada círculo ----
-  puntosVerde:  10,   // el verde suma 10
-  puntosDorado: 30,   // el dorado suma 30
-  puntosRojo:   -5,   // el rojo resta 5
+  puntosVerde:  10,
+  puntosDorado: 30,
+  puntosRojo:   -5,
 
-  // ---- VELOCIDAD: cada cuántos milisegundos aparece un círculo ----
-  // (1000 = 1 segundo. Número más chico = más rápido y más difícil.)
+  // ---- VELOCIDAD de aparición en el nivel 1 (milisegundos) ----
   velocidadAparicion: 700,
+  // ---- Cuánto dura cada círculo antes de irse solo (ms) ----
+  duracionCirculo: 1500,
 
-  // ---- Cuánto tiempo dura cada círculo antes de desaparecer solo (ms) ----
-  duracionCirculo: 1500
+  // ================== NIVELES ==================
+  segundosPorNivel: 7,        // cada cuántos segundos sube el nivel
+  aceleracionPorNivel: 0.82,  // 0.82 = 18% más rápido por nivel
+  velocidadMinima: 280,       // tope para que no sea imposible
+
+  // ================== COMBO ==================
+  comboMinimo: 3,       // desde cuántos aciertos seguidos se muestra el combo
+  comboCadaBonus: 5,    // cada cuántos aciertos seguidos das un bonus
+  comboBonus: 15,       // puntos de ese bonus
+
+  // ================== CAMPEONES ==================
+  maxCampeones: 10      // cuántos nombres se guardan en la tabla
 };
 
-/* ---- NOMBRE DEL JUEGO en cada idioma ---- */
-/* (Cambien el texto entre comillas de cada idioma) */
 const NOMBRE = {
   es: "Toca Rápido 🎯",
   en: "Tap Fast 🎯",
   fr: "Tape Vite 🎯"
 };
 
-/* ---- TEXTOS Y MENSAJES en los 3 idiomas ---- */
-/* (Pueden cambiar cualquier texto entre comillas) */
 const TEXTOS = {
   es: {
-    verde: "Verde", dorado: "Dorado", rojo: "Rojo",
-    puntos: "puntos",
+    verde: "Verde", dorado: "Dorado", rojo: "TNT", puntos: "puntos",
     intro: "Toca los círculos lo más rápido que puedas:",
-    noToques: "(¡NO lo toques!)",
-    tienes: "Tienes", segundos: "segundos", suerte: "¡Suerte!",
-    jugar: "▶ JUGAR",
-    firma: "Hecho en familia 👨‍👦‍👦",
-    enPausa: "⏸️ En pausa",
-    puntaje: "Puntaje",
-    continuar: "▶ CONTINUAR",
-    salir: "⬅ SALIR",
-    tuPuntaje: "Tu puntaje",
-    jugarDeNuevo: "🔄 JUGAR DE NUEVO",
+    noToques: "(¡NO lo toques, explota!)",
+    tienes: "Tienes", segundos: "segundos", suerte: "¡El juego se acelera por niveles!",
+    jugar: "▶ JUGAR", firma: "Hecho en familia 👨‍👦‍👦",
+    nivel: "Nivel", record: "Récord", nuevoRecord: "🎉 ¡NUEVO RÉCORD! 🎉",
+    combo: "¡COMBO", bonus: "¡BONUS", subeNivel: "¡NIVEL",
+    enPausa: "⏸️ En pausa", puntaje: "Puntaje",
+    continuar: "▶ CONTINUAR", menu: "⬅ MENÚ", volver: "⬅ VOLVER",
+    tuPuntaje: "Tu puntaje", jugarDeNuevo: "🔄 JUGAR DE NUEVO",
+    verCampeones: "🏆 Campeones", campeones: "🏆 Campeones",
+    sinPuntajes: "Aún no hay puntajes. ¡Sé el primero! 🌟",
+    nombrePlaceholder: "Tu nombre", jugadorDefault: "Jugador",
     mensajes: [
       { hasta: 49,       texto: "¡Sigue intentando! 🎮" },
       { hasta: 99,       texto: "¡Bien jugado! 💪" },
@@ -296,19 +406,19 @@ const TEXTOS = {
     ]
   },
   en: {
-    verde: "Green", dorado: "Gold", rojo: "Red",
-    puntos: "points",
+    verde: "Green", dorado: "Gold", rojo: "TNT", puntos: "points",
     intro: "Tap the circles as fast as you can:",
-    noToques: "(do NOT tap it!)",
-    tienes: "You have", segundos: "seconds", suerte: "Good luck!",
-    jugar: "▶ PLAY",
-    firma: "Made as a family 👨‍👦‍👦",
-    enPausa: "⏸️ Paused",
-    puntaje: "Score",
-    continuar: "▶ CONTINUE",
-    salir: "⬅ QUIT",
-    tuPuntaje: "Your score",
-    jugarDeNuevo: "🔄 PLAY AGAIN",
+    noToques: "(do NOT tap it, it blows up!)",
+    tienes: "You have", segundos: "seconds", suerte: "It speeds up each level!",
+    jugar: "▶ PLAY", firma: "Made as a family 👨‍👦‍👦",
+    nivel: "Level", record: "Best", nuevoRecord: "🎉 NEW RECORD! 🎉",
+    combo: "COMBO", bonus: "BONUS", subeNivel: "LEVEL",
+    enPausa: "⏸️ Paused", puntaje: "Score",
+    continuar: "▶ CONTINUE", menu: "⬅ MENU", volver: "⬅ BACK",
+    tuPuntaje: "Your score", jugarDeNuevo: "🔄 PLAY AGAIN",
+    verCampeones: "🏆 Leaderboard", campeones: "🏆 Leaderboard",
+    sinPuntajes: "No scores yet. Be the first! 🌟",
+    nombrePlaceholder: "Your name", jugadorDefault: "Player",
     mensajes: [
       { hasta: 49,       texto: "Keep trying! 🎮" },
       { hasta: 99,       texto: "Well played! 💪" },
@@ -317,19 +427,19 @@ const TEXTOS = {
     ]
   },
   fr: {
-    verde: "Vert", dorado: "Or", rojo: "Rouge",
-    puntos: "points",
+    verde: "Vert", dorado: "Or", rojo: "TNT", puntos: "points",
     intro: "Touche les cercles le plus vite possible :",
-    noToques: "(ne le touche PAS !)",
-    tienes: "Tu as", segundos: "secondes", suerte: "Bonne chance !",
-    jugar: "▶ JOUER",
-    firma: "Fait en famille 👨‍👦‍👦",
-    enPausa: "⏸️ En pause",
-    puntaje: "Score",
-    continuar: "▶ CONTINUER",
-    salir: "⬅ QUITTER",
-    tuPuntaje: "Ton score",
-    jugarDeNuevo: "🔄 REJOUER",
+    noToques: "(ne le touche PAS, ça explose !)",
+    tienes: "Tu as", segundos: "secondes", suerte: "Ça accélère à chaque niveau !",
+    jugar: "▶ JOUER", firma: "Fait en famille 👨‍👦‍👦",
+    nivel: "Niveau", record: "Record", nuevoRecord: "🎉 NOUVEAU RECORD ! 🎉",
+    combo: "COMBO", bonus: "BONUS", subeNivel: "NIVEAU",
+    enPausa: "⏸️ En pause", puntaje: "Score",
+    continuar: "▶ CONTINUER", menu: "⬅ MENU", volver: "⬅ RETOUR",
+    tuPuntaje: "Ton score", jugarDeNuevo: "🔄 REJOUER",
+    verCampeones: "🏆 Champions", campeones: "🏆 Champions",
+    sinPuntajes: "Pas encore de scores. Sois le premier ! 🌟",
+    nombrePlaceholder: "Ton nom", jugadorDefault: "Joueur",
     mensajes: [
       { hasta: 49,       texto: "Continue d'essayer ! 🎮" },
       { hasta: 99,       texto: "Bien joué ! 💪" },
@@ -341,43 +451,96 @@ const TEXTOS = {
 
 /* ================================================================
    ███  FIN DE LA ZONA DE LOS NIÑOS  ███
-   (De aquí para abajo es el motor del juego. No hace falta tocarlo.)
    ================================================================ */
 
-// Aplicar los colores a la página
 document.documentElement.style.setProperty('--verde', CONFIG.colorVerde);
 document.documentElement.style.setProperty('--dorado', CONFIG.colorDorado);
 document.documentElement.style.setProperty('--rojo', CONFIG.colorRojo);
 
-// Referencias a elementos de la página
 const zona          = document.getElementById('zona');
 const hud           = document.getElementById('hud');
 const elPuntaje     = document.getElementById('puntaje');
 const elTiempo      = document.getElementById('tiempo');
+const elNivel       = document.getElementById('nivel');
+const elCombo       = document.getElementById('combo');
+const elNivelUp     = document.getElementById('nivelUp');
+const inputNombre   = document.getElementById('inputNombre');
 const pantallaInicio= document.getElementById('pantallaInicio');
 const pantallaFin   = document.getElementById('pantallaFin');
 const pantallaPausa = document.getElementById('pantallaPausa');
+const pantallaCamp  = document.getElementById('pantallaCampeones');
 const elPuntajeFinal= document.getElementById('puntajeFinal');
 const elMensajeFinal= document.getElementById('mensajeFinal');
 const elPuntajePausa= document.getElementById('puntajePausa');
+const elMedalla     = document.getElementById('medalla');
+const elNuevoRecord = document.getElementById('nuevoRecord');
+const elRecordInicio= document.getElementById('recordInicio');
+const tablaCamp     = document.getElementById('tablaCampeones');
+const tablaCampFin  = document.getElementById('tablaCampeonesFin');
 
-// Variables del juego
-let idioma = CONFIG.idiomaInicial;   // idioma actual
-let puntaje = 0;
-let tiempoRestante = CONFIG.duracionSegundos;
-let intervaloAparicion = null;
-let intervaloTiempo = null;
-let jugando = false;
-let enPausa = false;
+let idioma = CONFIG.idiomaInicial;
+let puntaje = 0, tiempoRestante = CONFIG.duracionSegundos, nivel = 1, combo = 0;
+let velocidadActual = CONFIG.velocidadAparicion;
+let intervaloAparicion = null, intervaloTiempo = null;
+let jugando = false, enPausa = false;
 
-// Los 3 tipos de círculo con su probabilidad
+// ---- Récord (mejor puntaje) ----
+function leerRecord() { try { return parseInt(localStorage.getItem('tapfast_record')||'0',10)||0; } catch(e){ return 0; } }
+function guardarRecord(v){ try { localStorage.setItem('tapfast_record', String(v)); } catch(e){} }
+let record = leerRecord();
+
+// ---- Tabla de campeones (guardada en el aparato) ----
+function leerScores() { try { return JSON.parse(localStorage.getItem('tapfast_scores')||'[]'); } catch(e){ return []; } }
+function guardarScores(a){ try { localStorage.setItem('tapfast_scores', JSON.stringify(a)); } catch(e){} }
+function agregarScore(nombre, score) {
+  const arr = leerScores();
+  const marca = Date.now();
+  arr.push({ n: nombre, s: score, t: marca });
+  arr.sort((a,b) => b.s - a.s);
+  const top = arr.slice(0, CONFIG.maxCampeones);
+  guardarScores(top);
+  return marca;
+}
+function nombreActual() {
+  const v = (inputNombre.value || '').trim();
+  return v ? v : TEXTOS[idioma].jugadorDefault;
+}
+// Dibujar la tabla de campeones en un contenedor; resalta la fila recién agregada
+function renderCampeones(contenedor, marcaResaltar) {
+  const scores = leerScores();
+  contenedor.innerHTML = '';
+  if (scores.length === 0) {
+    const v = document.createElement('div');
+    v.className = 'vacio';
+    v.textContent = TEXTOS[idioma].sinPuntajes;
+    contenedor.appendChild(v);
+    return;
+  }
+  const medallas = ['🥇','🥈','🥉'];
+  scores.forEach((it, i) => {
+    const f = document.createElement('div');
+    f.className = 'fila' + (marcaResaltar && it.t === marcaResaltar ? ' yo' : '');
+    const pos = document.createElement('div'); pos.className = 'pos'; pos.textContent = medallas[i] || (i+1);
+    const nom = document.createElement('div'); nom.className = 'nom'; nom.textContent = it.n;
+    const pts = document.createElement('div'); pts.className = 'pts'; pts.textContent = it.s;
+    f.appendChild(pos); f.appendChild(nom); f.appendChild(pts);
+    contenedor.appendChild(f);
+  });
+}
+
 const TIPOS = [
-  { clase: 'verde',  emoji: CONFIG.emojiVerde,  puntos: CONFIG.puntosVerde,  prob: 0.70 },
-  { clase: 'dorado', emoji: CONFIG.emojiDorado, puntos: CONFIG.puntosDorado, prob: 0.15 },
-  { clase: 'rojo',   emoji: CONFIG.emojiRojo,   puntos: CONFIG.puntosRojo,   prob: 0.15 }
+  { clase: 'verde',  emoji: CONFIG.emojiVerde,  puntos: CONFIG.puntosVerde,  prob: 0.70, malo: false },
+  { clase: 'dorado', emoji: CONFIG.emojiDorado, puntos: CONFIG.puntosDorado, prob: 0.15, malo: false },
+  { clase: 'rojo',   emoji: CONFIG.emojiRojo,   puntos: CONFIG.puntosRojo,   prob: 0.15, malo: true  }
 ];
 
-// ---- Cambiar todos los textos al idioma elegido ----
+function obtenerMedalla(p) {
+  if (p <= 49)  return "🎮";
+  if (p <= 99)  return "🥉";
+  if (p <= 199) return "🥈";
+  return "🏆";
+}
+
 function aplicarIdioma(lang) {
   idioma = lang;
   const T = TEXTOS[lang];
@@ -385,7 +548,6 @@ function aplicarIdioma(lang) {
   document.title = NOMBRE[lang];
   document.getElementById('titulo').textContent = NOMBRE[lang];
 
-  // Instrucciones (con colores por tipo de círculo)
   document.getElementById('instrucciones').innerHTML =
     T.intro + "<br><br>" +
     '<span style="color:var(--verde)">' + CONFIG.emojiVerde + ' ' + T.verde + '</span> = <span>+' + CONFIG.puntosVerde + ' ' + T.puntos + '</span><br>' +
@@ -393,166 +555,177 @@ function aplicarIdioma(lang) {
     '<span style="color:var(--rojo)">' + CONFIG.emojiRojo + ' ' + T.rojo + '</span> = <span>' + CONFIG.puntosRojo + ' ' + T.puntos + '</span> ' + T.noToques + '<br><br>' +
     T.tienes + ' <span>' + CONFIG.duracionSegundos + ' ' + T.segundos + '</span>. ' + T.suerte;
 
+  document.getElementById('lblNivel').textContent = T.nivel;
+  document.getElementById('lblRecordInicio').textContent = T.record;
   document.getElementById('btnJugar').textContent = T.jugar;
+  document.getElementById('btnVerCampeones').textContent = T.verCampeones;
   document.getElementById('firma').textContent = T.firma;
   document.getElementById('tituloPausa').textContent = T.enPausa;
   document.getElementById('lblPuntajePausa').textContent = T.puntaje;
   document.getElementById('btnContinuar').textContent = T.continuar;
-  document.getElementById('btnSalir').textContent = T.salir;
+  document.getElementById('btnAtrasPausa').textContent = T.menu;
+  document.getElementById('tituloCampeones').textContent = T.campeones;
+  document.getElementById('btnAtrasCampeones').textContent = T.volver;
   document.getElementById('lblTuPuntaje').textContent = T.tuPuntaje;
   document.getElementById('btnReiniciar').textContent = T.jugarDeNuevo;
+  document.getElementById('btnMenuFin').textContent = T.menu;
+  elNuevoRecord.textContent = T.nuevoRecord;
+  elRecordInicio.textContent = record;
+  inputNombre.placeholder = T.nombrePlaceholder;
 
-  // Marcar la bandera activa
-  document.querySelectorAll('.flag').forEach(f => {
-    f.classList.toggle('activo', f.dataset.idioma === lang);
-  });
+  document.querySelectorAll('.flag').forEach(f => f.classList.toggle('activo', f.dataset.idioma === lang));
 }
 
-// Elegir un tipo de círculo al azar según su probabilidad
 function elegirTipo() {
-  const r = Math.random();
-  let acum = 0;
-  for (const t of TIPOS) {
-    acum += t.prob;
-    if (r < acum) return t;
-  }
+  const r = Math.random(); let acum = 0;
+  for (const t of TIPOS) { acum += t.prob; if (r < acum) return t; }
   return TIPOS[0];
 }
 
-// Crear un círculo en una posición aleatoria
 function crearCirculo() {
   const tipo = elegirTipo();
   const c = document.createElement('div');
   c.className = 'circulo ' + tipo.clase;
   c.textContent = tipo.emoji;
 
-  // Posición aleatoria dentro de la pantalla (dejando margen)
-  const tamano = 78;
-  const margenArriba = 70; // para no tapar el HUD
+  const tamano = 78, margenArriba = 70;
   const x = Math.random() * (window.innerWidth  - tamano);
   const y = margenArriba + Math.random() * (window.innerHeight - tamano - margenArriba - 10);
-  c.style.left = x + 'px';
-  c.style.top  = y + 'px';
+  c.style.left = x + 'px'; c.style.top = y + 'px';
 
-  // Al tocar el círculo
   const tocar = (e) => {
     e.preventDefault();
-    if (!c.parentNode) return; // ya fue tocado o desapareció
-    sumarPuntos(tipo.puntos, x + tamano/2, y);
+    if (!c.parentNode) return;
+    registrarAcierto(tipo, x + tamano/2, y);
     c.remove();
   };
-  c.addEventListener('touchstart', tocar, { passive: false }); // toque en celular
-  c.addEventListener('mousedown', tocar);                      // click en computadora
+  c.addEventListener('touchstart', tocar, { passive: false });
+  c.addEventListener('mousedown', tocar);
 
   zona.appendChild(c);
-
-  // El círculo desaparece solo si no lo tocan
   setTimeout(() => { if (c.parentNode) c.remove(); }, CONFIG.duracionCirculo);
 }
 
-// Sumar (o restar) puntos y mostrar el texto flotante
-function sumarPuntos(pts, x, y) {
-  puntaje += pts;
-  if (puntaje < 0) puntaje = 0;
-  elPuntaje.textContent = puntaje;
+function registrarAcierto(tipo, x, y) {
+  sumarPuntos(tipo.puntos, x, y);
+  if (tipo.malo) {
+    combo = 0; // el TNT rompe el combo
+  } else {
+    combo++;
+    if (combo >= CONFIG.comboMinimo) mostrarCartel(elCombo, '🔥 ' + TEXTOS[idioma].combo + ' x' + combo + '!');
+    if (combo > 0 && combo % CONFIG.comboCadaBonus === 0) {
+      puntaje += CONFIG.comboBonus; elPuntaje.textContent = puntaje;
+      mostrarCartel(elCombo, '⚡ ' + TEXTOS[idioma].bonus + ' +' + CONFIG.comboBonus + '!');
+    }
+  }
+}
 
+function sumarPuntos(pts, x, y) {
+  puntaje += pts; if (puntaje < 0) puntaje = 0;
+  elPuntaje.textContent = puntaje;
   const f = document.createElement('div');
   f.className = 'flotante';
   f.textContent = (pts >= 0 ? '+' : '') + pts;
   f.style.color = pts >= 0 ? (pts >= CONFIG.puntosDorado ? CONFIG.colorDorado : CONFIG.colorVerde) : CONFIG.colorRojo;
-  f.style.left = x + 'px';
-  f.style.top  = y + 'px';
+  f.style.left = x + 'px'; f.style.top = y + 'px';
   zona.appendChild(f);
   setTimeout(() => f.remove(), 700);
 }
 
-// Empezar una partida
+function mostrarCartel(el, texto) {
+  el.textContent = texto;
+  el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+}
+
 function iniciarJuego() {
-  puntaje = 0;
-  tiempoRestante = CONFIG.duracionSegundos;
-  jugando = true;
-  enPausa = false;
-
-  elPuntaje.textContent = 0;
-  elTiempo.textContent = tiempoRestante;
+  puntaje = 0; tiempoRestante = CONFIG.duracionSegundos; nivel = 1; combo = 0;
+  velocidadActual = CONFIG.velocidadAparicion; jugando = true; enPausa = false;
+  elPuntaje.textContent = 0; elTiempo.textContent = tiempoRestante; elNivel.textContent = nivel;
   elTiempo.classList.remove('poco');
-
-  pantallaInicio.style.display = 'none';
-  pantallaFin.style.display = 'none';
-  pantallaPausa.style.display = 'none';
-  zona.style.display = 'block';
-  hud.style.display = 'flex';
-  zona.innerHTML = '';
-
+  pantallaInicio.style.display = 'none'; pantallaFin.style.display = 'none';
+  pantallaPausa.style.display = 'none'; pantallaCamp.style.display = 'none';
+  zona.style.display = 'block'; hud.style.display = 'flex'; zona.innerHTML = '';
   arrancarRelojes();
 }
 
-// Poner en marcha la aparición de círculos y el reloj
 function arrancarRelojes() {
-  intervaloAparicion = setInterval(crearCirculo, CONFIG.velocidadAparicion);
+  clearInterval(intervaloAparicion);
+  intervaloAparicion = setInterval(crearCirculo, velocidadActual);
   intervaloTiempo = setInterval(() => {
-    tiempoRestante--;
-    elTiempo.textContent = tiempoRestante;
+    tiempoRestante--; elTiempo.textContent = tiempoRestante;
     if (tiempoRestante <= 5) elTiempo.classList.add('poco');
+    const jugados = CONFIG.duracionSegundos - tiempoRestante;
+    const nivelQueToca = Math.floor(jugados / CONFIG.segundosPorNivel) + 1;
+    if (nivelQueToca > nivel && tiempoRestante > 0) subirNivel(nivelQueToca);
     if (tiempoRestante <= 0) terminarJuego();
   }, 1000);
 }
 
-// ---- PAUSAR: congela el tiempo y deja de aparecer círculos ----
+function subirNivel(nuevoNivel) {
+  nivel = nuevoNivel; elNivel.textContent = nivel;
+  velocidadActual = Math.max(CONFIG.velocidadMinima,
+    Math.round(CONFIG.velocidadAparicion * Math.pow(CONFIG.aceleracionPorNivel, nivel - 1)));
+  clearInterval(intervaloAparicion);
+  intervaloAparicion = setInterval(crearCirculo, velocidadActual);
+  mostrarCartel(elNivelUp, '🚀 ' + TEXTOS[idioma].subeNivel + ' ' + nivel + '!');
+}
+
 function pausarJuego() {
   if (!jugando || enPausa) return;
   enPausa = true;
-  clearInterval(intervaloAparicion);
-  clearInterval(intervaloTiempo);
-  zona.innerHTML = '';                 // limpia los círculos que había en pantalla
-  elPuntajePausa.textContent = puntaje;
+  clearInterval(intervaloAparicion); clearInterval(intervaloTiempo);
+  zona.innerHTML = ''; elPuntajePausa.textContent = puntaje;
   pantallaPausa.style.display = 'flex';
 }
 
-// ---- CONTINUAR: sigue la partida donde se quedó ----
 function continuarJuego() {
   if (!enPausa) return;
-  enPausa = false;
-  pantallaPausa.style.display = 'none';
+  enPausa = false; pantallaPausa.style.display = 'none';
   arrancarRelojes();
 }
 
-// ---- SALIR: detiene todo y vuelve a la pantalla de inicio ----
 function salirAlInicio() {
-  enPausa = false;
-  jugando = false;
-  clearInterval(intervaloAparicion);
-  clearInterval(intervaloTiempo);
-  zona.innerHTML = '';
-  zona.style.display = 'none';
-  hud.style.display = 'none';
-  pantallaPausa.style.display = 'none';
-  pantallaFin.style.display = 'none';
+  enPausa = false; jugando = false;
+  clearInterval(intervaloAparicion); clearInterval(intervaloTiempo);
+  zona.innerHTML = ''; zona.style.display = 'none'; hud.style.display = 'none';
+  pantallaPausa.style.display = 'none'; pantallaFin.style.display = 'none'; pantallaCamp.style.display = 'none';
+  elRecordInicio.textContent = record;
   pantallaInicio.style.display = 'flex';
 }
 
-// Terminar la partida y mostrar el resultado
 function terminarJuego() {
-  jugando = false;
-  enPausa = false;
-  clearInterval(intervaloAparicion);
-  clearInterval(intervaloTiempo);
-  zona.innerHTML = '';
-  zona.style.display = 'none';
-  hud.style.display = 'none';
+  jugando = false; enPausa = false;
+  clearInterval(intervaloAparicion); clearInterval(intervaloTiempo);
+  zona.innerHTML = ''; zona.style.display = 'none'; hud.style.display = 'none';
 
+  const esRecord = puntaje > record;
+  if (esRecord) { record = puntaje; guardarRecord(record); }
+  elNuevoRecord.style.display = esRecord ? 'block' : 'none';
+
+  // Guardar en la tabla de campeones y resaltar mi fila
+  const miMarca = agregarScore(nombreActual(), puntaje);
+  renderCampeones(tablaCampFin, miMarca);
+
+  elMedalla.textContent = obtenerMedalla(puntaje);
   elPuntajeFinal.textContent = puntaje;
   elMensajeFinal.textContent = obtenerMensaje(puntaje);
   pantallaFin.style.display = 'flex';
 }
 
-// Elegir el mensaje motivacional según el puntaje (en el idioma actual)
 function obtenerMensaje(p) {
   const mensajes = TEXTOS[idioma].mensajes;
-  for (const m of mensajes) {
-    if (p <= m.hasta) return m.texto;
-  }
+  for (const m of mensajes) { if (p <= m.hasta) return m.texto; }
   return mensajes[mensajes.length - 1].texto;
+}
+
+function verCampeones() {
+  renderCampeones(tablaCamp, null);
+  pantallaInicio.style.display = 'none';
+  pantallaCamp.style.display = 'flex';
+}
+function cerrarCampeones() {
+  pantallaCamp.style.display = 'none';
+  pantallaInicio.style.display = 'flex';
 }
 
 // Botones
@@ -560,17 +733,15 @@ document.getElementById('btnJugar').addEventListener('click', iniciarJuego);
 document.getElementById('btnReiniciar').addEventListener('click', iniciarJuego);
 document.getElementById('btnPausa').addEventListener('click', pausarJuego);
 document.getElementById('btnContinuar').addEventListener('click', continuarJuego);
-document.getElementById('btnSalir').addEventListener('click', salirAlInicio);
+document.getElementById('btnAtrasPausa').addEventListener('click', salirAlInicio);
+document.getElementById('btnMenuFin').addEventListener('click', salirAlInicio);
+document.getElementById('btnVerCampeones').addEventListener('click', verCampeones);
+document.getElementById('btnAtrasCampeones').addEventListener('click', cerrarCampeones);
 
-// Botones de idioma
-document.querySelectorAll('.flag').forEach(f => {
-  f.addEventListener('click', () => aplicarIdioma(f.dataset.idioma));
-});
+document.querySelectorAll('.flag').forEach(f => f.addEventListener('click', () => aplicarIdioma(f.dataset.idioma)));
 
-// Evitar que el navegador haga zoom con doble toque
 document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
 
-// Arrancar con el idioma inicial
 aplicarIdioma(CONFIG.idiomaInicial);
 </script>
 </body>
